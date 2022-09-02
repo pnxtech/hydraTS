@@ -1,2 +1,6 @@
 # HydraTS
-Hydra TypeScript
+
+![logo](./assets/hydraTS-logo.png)
+
+HydraTS is a TypeScript library for building Hydra-powered Microservices and other distribute software.
+
