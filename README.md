@@ -1,2 +1,2 @@
-# hydra-ts
+# HydraTS
 Hydra TypeScript
