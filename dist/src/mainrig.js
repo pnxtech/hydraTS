@@ -13,7 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const main_1 = require("./main");
-const config_json_1 = __importDefault(require("../config/config.json"));
+const config_json_1 = __importDefault(require("./config/config.json"));
 const main = () => __awaiter(void 0, void 0, void 0, function* () {
     const hydra = new main_1.Hydra();
     yield hydra.init(config_json_1.default.hydra);

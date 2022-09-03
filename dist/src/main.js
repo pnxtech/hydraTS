@@ -15,13 +15,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Hydra = void 0;
 const events_1 = __importDefault(require("events"));
 const redis_1 = require("redis");
+const network_1 = require("./lib/network");
 /**
  * Hydra class
  */
 class Hydra extends events_1.default {
+    /**
+     * @name constructor
+     */
     constructor() {
-        super(...arguments);
-        this.client = (0, redis_1.createClient)();
+        super();
     }
     /**
      * @name init
@@ -30,11 +33,17 @@ class Hydra extends events_1.default {
      */
     init(config) {
         return __awaiter(this, void 0, void 0, function* () {
-            (0, redis_1.createClient)({
-                url: config.redis.url
+            this.config = config;
+            this.client = (0, redis_1.createClient)({
+                url: this.config.redis.url
             });
             this.client.on('error', (err) => console.log('Redis Client Error', err));
             yield this.client.connect();
+            // const s = await this.client.get('hydra:service:hydra-logging-svcs:service');
+            // console.log(s);
+            const net = new network_1.Network();
+            this.config.serviceIP = yield net.getServiceIP(this.config);
+            console.log(this.config.serviceIP);
         });
     }
 }

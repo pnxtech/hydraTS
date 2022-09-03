@@ -1,0 +1,15 @@
+{
+  "hydra": {
+    "serviceName": "test-svcs",
+    "serviceDescription": "Sample Microservice",
+    "serviceIP": "",
+    "serviceDNS": "",
+    "serviceInterface": "en4/255.255.255.0",
+    "servicePort": 7777,
+    "serviceType": "test",
+    "serviceVersion": "1.0.0",
+    "redis": {
+      "url": "redis://10.0.0.4:6379/0"
+    }
+  }
+}
