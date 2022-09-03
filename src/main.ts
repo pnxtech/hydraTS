@@ -2,6 +2,8 @@ import EventEmitter from 'events';
 import { createClient } from 'redis';
 import { IHydraConfig } from './lib/hydra-config';
 import { Network } from './lib/network';
+import { v4 as uuidv4 } from 'uuid';
+import { UMFMessage, parseRoute} from './lib/umfmessage';
 
 /**
  * Hydra class
@@ -9,6 +11,7 @@ import { Network } from './lib/network';
 export class Hydra extends EventEmitter { 
   private client;
   private config: IHydraConfig;
+  private instanceID: string;
 
   /**
    * @name constructor
@@ -35,5 +38,46 @@ export class Hydra extends EventEmitter {
     const net = new Network();
     this.config.serviceIP = await net.getServiceIP(this.config);
     console.log(this.config.serviceIP);
+
+    this.instanceID = uuidv4().replace(RegExp('-', 'g'), '');
+  }
+
+  /**
+   * @name serviceName
+   */
+  get serviceName() {
+    return this.config.serviceName;
+  }
+
+  /**
+   * @name serviceDescription
+   */
+  get serviceDescription() {
+    return this.config.serviceDescription;
+  }
+
+  /**
+   * @name serviceIP
+   * @return IP address {string}
+   */
+  get serviceIP() {
+    return this.config.serviceIP;
+  }
+
+  /**
+   * @name serviceInstanceID
+   * @return service instance ID {string}
+   */
+  get serviceInstanceID() {
+    return this.instanceID;
+  }
+
+  /**
+   * @name cloneRedisClient
+   * @summary Clone Redis client
+   * @returns Redis client
+   */
+  get cloneRedisClient() {
+    return this.client.duplicate();
   }
 }

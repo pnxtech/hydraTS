@@ -16,6 +16,7 @@ exports.Hydra = void 0;
 const events_1 = __importDefault(require("events"));
 const redis_1 = require("redis");
 const network_1 = require("./lib/network");
+const uuid_1 = require("uuid");
 /**
  * Hydra class
  */
@@ -44,7 +45,42 @@ class Hydra extends events_1.default {
             const net = new network_1.Network();
             this.config.serviceIP = yield net.getServiceIP(this.config);
             console.log(this.config.serviceIP);
+            this.instanceID = (0, uuid_1.v4)().replace(RegExp('-', 'g'), '');
         });
+    }
+    /**
+     * @name serviceName
+     */
+    get serviceName() {
+        return this.config.serviceName;
+    }
+    /**
+     * @name serviceDescription
+     */
+    get serviceDescription() {
+        return this.config.serviceDescription;
+    }
+    /**
+     * @name serviceIP
+     * @return IP address {string}
+     */
+    get serviceIP() {
+        return this.config.serviceIP;
+    }
+    /**
+     * @name serviceInstanceID
+     * @return service instance ID {string}
+     */
+    get serviceInstanceID() {
+        return this.instanceID;
+    }
+    /**
+     * @name cloneRedisClient
+     * @summary Clone Redis client
+     * @returns Redis client
+     */
+    get cloneRedisClient() {
+        return this.client.duplicate();
     }
 }
 exports.Hydra = Hydra;
