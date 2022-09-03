@@ -54,4 +54,13 @@ export class Network {
       } 
     });
   }
+
+  /**
+   * @name hostname
+   * @summary Get hostname
+   * @returns host name string
+   */
+  get hostname(): string {
+    return os.hostname();
+  }
 }

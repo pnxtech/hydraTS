@@ -62,5 +62,13 @@ class Network {
             }
         });
     }
+    /**
+     * @name hostname
+     * @summary Get hostname
+     * @returns host name string
+     */
+    get hostname() {
+        return os_1.default.hostname();
+    }
 }
 exports.Network = Network;

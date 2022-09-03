@@ -23,6 +23,45 @@ class UMFMessage {
             mid: this.createMessageID(),
         };
     }
+    createMessage(message) {
+        if (message.to) {
+            this.message.to = message.to;
+        }
+        if (message.from || message.frm) {
+            this.message.from = message.from || message.frm;
+        }
+        if (message.headers || message.hdr) {
+            this.message.headers = message.headers || message.hdr;
+        }
+        this.message.mid = message.mid || this.createMessageID();
+        if (message.rmid) {
+            this.message.rmid = message.rmid;
+        }
+        if (message.signature || message.sig) {
+            this.message.signature = message.signature || message.sig;
+        }
+        if (message.timeout || message.tmo) {
+            this.message.timeout = message.timeout || message.tmo;
+        }
+        this.message.timestamp = message.timestamp || message.ts || this.getTimeStamp();
+        if (message.type || message.typ) {
+            this.message.type = message.type || message.typ;
+        }
+        this.message.version = message.version || message.ver || this.UMF_VERSION;
+        if (message.via) {
+            this.message.via = message.via;
+        }
+        if (message.forward || message.fwd) {
+            this.message.forward = message.forward || message.fwd;
+        }
+        if (message.body || message.bdy) {
+            this.message.body = message.body || message.bdy;
+        }
+        if (message.authorization || message.aut) {
+            this.message.authorization = message.authorization || message.aut;
+        }
+        return this.message;
+    }
     /**
     * @name getTimeStamp
     * @summary retrieve an ISO 8601 timestamp
@@ -42,7 +81,7 @@ class UMFMessage {
     /**
     * @name createShortMessageID
     * @summary Returns a short form UUID for use with messages
-     @see https://en.wikipedia.org/wiki/Base36
+    * @see https://en.wikipedia.org/wiki/Base36
     * @return {string} short identifer
     */
     createShortMessageID() {
@@ -64,7 +103,7 @@ class UMFMessage {
     }
     /**
     * @name toJSON
-    * @return {object} A JSON stringifiable version of message
+    * @return {IUMFMessage} A JSON stringifiable version of message
     */
     toJSON() {
         return this.message;
@@ -72,10 +111,13 @@ class UMFMessage {
     /**
     * @name toShort
     * @summary convert a long message to a short one
-    * @return {object} converted message
+    * @return {IUMFMessage} converted message
     */
     toShort() {
-        const message = {};
+        const message = {
+            to: '',
+            mid: this.createMessageID(),
+        };
         if (this.message['to']) {
             message['to'] = this.message['to'];
         }
@@ -138,7 +180,6 @@ exports.UMFMessage = UMFMessage;
 /**
  * @name parseRoute
  * @summary parses message route strings
- * @private
  * @param {string} toValue - string to be parsed
  * @return {IParsedRoute} object - containing route parameters. If the
  *                  object contains an error field then the route

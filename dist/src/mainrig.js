@@ -17,6 +17,7 @@ const config_json_1 = __importDefault(require("./config/config.json"));
 const main = () => __awaiter(void 0, void 0, void 0, function* () {
     const hydra = new main_1.Hydra();
     yield hydra.init(config_json_1.default.hydra);
-    console.log(hydra.serviceInstanceID);
+    const result = yield hydra.registerService();
+    console.log(result);
 });
 main();
