@@ -39,7 +39,9 @@ class Hydra extends events_1.default {
         this.redisPreKey = 'hydra:service';
         this.mcMessageKey = 'hydra:service:mc';
         this.net = new network_1.Network();
-        this.publishChannel = null;
+        this.mcMessageChannelClient = null;
+        this.mcDirectMessageChannelClient = null;
+        // private publishChannel = null;
         this.presenceTimerInteval = null;
         this.healthTimerInterval = null;
         this.updatePresence = this.updatePresence.bind(this);
@@ -57,9 +59,12 @@ class Hydra extends events_1.default {
                 url: this.config.redis.url
             });
             this.instanceID = (0, uuid_1.v4)().replace(RegExp('-', 'g'), '');
-            this.client.on('error', (err) => console.log('Redis Client Error', err));
+            this.client.on('error', (err) => console.log('Hydra Redis Client Error', err));
+            this.client.on('connect', () => console.log('HydraRedis Client Connected'));
+            this.client.on('ready', () => console.log('HydraRedis Client Ready'));
+            this.client.on('reconnecting', () => console.log('HydraRedis Client Reconnecting'));
+            this.client.on('end', () => console.log('HydraRedis Client End'));
             this.config.serviceIP = yield this.net.getServiceIP(this.config);
-            console.log(this.config.serviceIP);
             yield this.client.connect();
         });
     }
@@ -80,7 +85,6 @@ class Hydra extends events_1.default {
                 port: this.config.servicePort,
                 hostName: this.net.hostname
             });
-            console.log(entry);
             if (entry && !this.client.closing) {
                 yield this.client.multi()
                     .set(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:presence`, this.instanceID, {
@@ -155,6 +159,7 @@ class Hydra extends events_1.default {
             yield this.client.set(`${this.redisPreKey}:${this.config.serviceName}:service`, serviceEntry);
             // Setup service message channels
             this.mcMessageChannelClient = this.cloneRedisClient();
+            this.mcMessageChannelClient.connect();
             this.mcMessageChannelClient.subscribe(`${this.mcMessageKey}:${this.config.serviceName}`);
             this.mcMessageChannelClient.on('message', (_channel, message) => {
                 const msg = JSON.parse(message);
@@ -165,6 +170,7 @@ class Hydra extends events_1.default {
                 }
             });
             this.mcDirectMessageChannelClient = this.cloneRedisClient();
+            this.mcDirectMessageChannelClient.connect();
             this.mcDirectMessageChannelClient.subscribe(`${this.mcMessageKey}:${this.config.serviceName}:${this.instanceID}`);
             this.mcDirectMessageChannelClient.on('message', (_channel, message) => {
                 const msg = JSON.parse(message);
@@ -184,6 +190,31 @@ class Hydra extends events_1.default {
                 serviceIP: this.serviceIP,
                 servicePort: this.servicePort
             };
+        });
+    }
+    /**
+     * @name shutdown
+     * @summary Shutdown Hydra
+     */
+    shutdown() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.presenceTimerInteval) {
+                clearInterval(this.presenceTimerInteval);
+            }
+            if (this.healthTimerInterval) {
+                clearInterval(this.healthTimerInterval);
+            }
+            yield this.client.multi()
+                .expire(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health`, KEY_EXPIRATION_TTL)
+                .expire(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health:log`, ONE_WEEK_IN_SECONDS)
+                .exec();
+            yield this.client.del(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:presence`);
+            yield Promise.all([
+                yield this.mcMessageChannelClient.quit(),
+                yield this.mcDirectMessageChannelClient.quit(),
+                // this.publishChannel.quit(),
+                yield this.client.quit()
+            ]);
         });
     }
     /**

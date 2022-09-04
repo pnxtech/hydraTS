@@ -17,7 +17,10 @@ const config_json_1 = __importDefault(require("./config/config.json"));
 const main = () => __awaiter(void 0, void 0, void 0, function* () {
     const hydra = new main_1.Hydra();
     yield hydra.init(config_json_1.default.hydra);
-    const result = yield hydra.registerService();
-    console.log(result);
+    const serviceInfo = yield hydra.registerService();
+    console.log(`${serviceInfo.serviceName} listening on ${serviceInfo.serviceIP}:${serviceInfo.servicePort}`);
+    setTimeout(() => __awaiter(void 0, void 0, void 0, function* () {
+        yield hydra.shutdown();
+    }), 15000);
 });
 main();

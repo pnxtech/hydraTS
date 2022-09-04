@@ -4,8 +4,12 @@ import config from './config/config.json';
 const main = async () => {
   const hydra = new Hydra();
   await hydra.init(config.hydra);
-  const result = await hydra.registerService();
-  console.log(result);
+  const serviceInfo = await hydra.registerService();
+  console.log(`${serviceInfo.serviceName} listening on ${serviceInfo.serviceIP}:${serviceInfo.servicePort}`);
+
+  setTimeout(async () => {
+    await hydra.shutdown();
+  }, 15000);
 };
 
 main();

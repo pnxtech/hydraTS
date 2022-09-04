@@ -17,6 +17,7 @@ const KEY_EXPIRATION_TTL = 3; // three seconds
 
 /**
  * Hydra class
+ * @note: Uses https://redis.js.org/ for Redis communication
  */
 export class Hydra extends EventEmitter {
   private client;
@@ -26,9 +27,9 @@ export class Hydra extends EventEmitter {
   private mcMessageKey = 'hydra:service:mc';
   private net = new Network();
  
-  private mcMessageChannelClient;
-  private mcDirectMessageChannelClient;
-  private publishChannel = null;
+  private mcMessageChannelClient = null;
+  private mcDirectMessageChannelClient = null;
+  // private publishChannel = null;
 
   private presenceTimerInteval = null;
   private healthTimerInterval = null;
@@ -54,9 +55,13 @@ export class Hydra extends EventEmitter {
     });
     this.instanceID = uuidv4().replace(RegExp('-', 'g'), '');
 
-    this.client.on('error', (err) => console.log('Redis Client Error', err));
+    this.client.on('error', (err) => console.log('Hydra Redis Client Error', err));
+    this.client.on('connect', () => console.log('HydraRedis Client Connected'));
+    this.client.on('ready', () => console.log('HydraRedis Client Ready'));
+    this.client.on('reconnecting', () => console.log('HydraRedis Client Reconnecting'));
+    this.client.on('end', () => console.log('HydraRedis Client End'));
+
     this.config.serviceIP = await this.net.getServiceIP(this.config);
-    console.log(this.config.serviceIP);
     await this.client.connect();
   }
 
@@ -76,7 +81,6 @@ export class Hydra extends EventEmitter {
       port: this.config.servicePort,
       hostName: this.net.hostname
     });
-    console.log(entry);
     if (entry && !this.client.closing) {
       await this.client.multi()
         .set(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:presence`, this.instanceID, {
@@ -156,6 +160,7 @@ export class Hydra extends EventEmitter {
 
     // Setup service message channels
     this.mcMessageChannelClient = this.cloneRedisClient();
+    this.mcMessageChannelClient.connect();
     this.mcMessageChannelClient.subscribe(`${this.mcMessageKey}:${this.config.serviceName}`);
     this.mcMessageChannelClient.on('message', (_channel, message) => {
       const msg = JSON.parse(message);
@@ -167,6 +172,7 @@ export class Hydra extends EventEmitter {
     });
 
     this.mcDirectMessageChannelClient =  this.cloneRedisClient();
+    this.mcDirectMessageChannelClient.connect();
     this.mcDirectMessageChannelClient.subscribe(`${this.mcMessageKey}:${this.config.serviceName}:${this.instanceID}`);
     this.mcDirectMessageChannelClient.on('message', (_channel, message) => {
       const msg = JSON.parse(message);
@@ -188,6 +194,31 @@ export class Hydra extends EventEmitter {
       serviceIP: this.serviceIP,
       servicePort: this.servicePort
     };
+  }
+
+  /**
+   * @name shutdown
+   * @summary Shutdown Hydra
+   */
+  async shutdown() {
+    if (this.presenceTimerInteval) {
+      clearInterval(this.presenceTimerInteval);
+    }
+    if (this.healthTimerInterval) {   
+      clearInterval(this.healthTimerInterval);
+    }
+    await this.client.multi()
+      .expire(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health`, KEY_EXPIRATION_TTL)
+      .expire(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health:log`, ONE_WEEK_IN_SECONDS)
+      .exec();
+    await this.client.del(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:presence`);
+
+    await Promise.all([
+      await this.mcMessageChannelClient.quit(),
+      await this.mcDirectMessageChannelClient.quit(),
+      // this.publishChannel.quit(),
+      await this.client.quit()  
+    ]);
   }
 
   /**
