@@ -87,13 +87,13 @@ class Hydra extends events_1.default {
                 hostName: this.net.hostname
             });
             if (entry && !this.client.closing) {
-                yield this.client.multi()
-                    .set(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:presence`, this.instanceID, {
+                yield this.client.MULTI()
+                    .SET(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:presence`, this.instanceID, {
                     EX: KEY_EXPIRATION_TTL,
                     NX: true
                 })
-                    .hSet(`${this.redisPreKey}:nodes`, this.instanceID, entry)
-                    .exec();
+                    .HSET(`${this.redisPreKey}:nodes`, this.instanceID, entry)
+                    .EXEC();
             }
         });
     }
@@ -106,13 +106,13 @@ class Hydra extends events_1.default {
             const entry = Object.assign({
                 updatedOn: this.timestamp
             }, this.getHealth());
-            yield this.client.multi()
-                .set(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health`, JSON.stringify(entry), {
+            yield this.client.MULTI()
+                .SET(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health`, JSON.stringify(entry), {
                 EX: KEY_EXPIRATION_TTL,
                 NX: true
             })
-                .expire(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health:log`, ONE_WEEK_IN_SECONDS)
-                .exec();
+                .EXPIRE(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health:log`, ONE_WEEK_IN_SECONDS)
+                .EXEC();
         });
     }
     /**
@@ -157,7 +157,7 @@ class Hydra extends events_1.default {
                 type: this.config.serviceType,
                 registeredOn: this.timestamp
             });
-            yield this.client.set(`${this.redisPreKey}:${this.config.serviceName}:service`, serviceEntry);
+            yield this.client.SET(`${this.redisPreKey}:${this.config.serviceName}:service`, serviceEntry);
             // Setup service message channels
             this.mcMessageChannelClient = this.cloneRedisClient();
             this.mcMessageChannelClient.connect();
@@ -194,6 +194,65 @@ class Hydra extends events_1.default {
         });
     }
     /**
+     * @name _getQueuedMessage
+     * @summary retrieve a queued message
+     * @param {string} serviceName who's queue might provide a message
+     * @return {promise} promise - resolving to the message that was dequeued or a rejection.
+     */
+    getQueuedMessage(serviceName) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield this.client.RPOPLPUSH(`${this.redisPreKey}:${serviceName}:mqrecieved`, `${this.redisPreKey}:${serviceName}:mqinprogress`);
+        });
+    }
+    /**
+     * @name queueMessage
+     * @summary Queue a message
+     * @param {object} message - UMF message to queue
+     * @return {promise} promise - resolving to the message that was queued or a rejection.
+     */
+    queueMessage(message) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const umfMsg = new umfmessage_1.UMFMessage();
+            umfMsg.createMessage(message);
+            if (!umfMsg.validate()) {
+                throw new Error('UMF message is invalid');
+            }
+            const msg = umfMsg.toShort();
+            const parsedRoute = (0, umfmessage_1.parseRoute)(msg.to);
+            if (parsedRoute.error) {
+                throw new Error(parsedRoute.error);
+            }
+            const serviceName = parsedRoute.serviceName;
+            yield this.client.LPUSH(`${this.redisPreKey}:${serviceName}:mqrecieved`, JSON.stringify(msg));
+            return message;
+        });
+    }
+    /**
+     * @name _markQueueMessage
+     * @summary Mark a queued message as either completed or not
+     * @param {object} message - message in question
+     * @param {boolean} completed - (true / false)
+     * @param {string} reason - if not completed this is the reason processing failed
+     * @return {promise} promise - resolving to the message that was dequeued or a rejection.
+     */
+    markQueueMessage(message, completed, reason) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let strMessage = JSON.stringify(message);
+            yield this.client.LREM(`${this.redisPreKey}:${this.serviceName}:mqinprogress`, -1, strMessage);
+            if (message.bdy) {
+                message.bdy.reason = reason || 'reason not provided';
+            }
+            else if (message.body) {
+                message.body.reason = reason || 'reason not provided';
+            }
+            if (completed) {
+                return message;
+            }
+            strMessage = JSON.stringify(message);
+            return yield this.client.RPUSH(`${this.redisPreKey}:${this.serviceName}:mqincomplete`, strMessage);
+        });
+    }
+    /**
      * @name shutdown
      * @summary Shutdown Hydra
      */
@@ -205,16 +264,16 @@ class Hydra extends events_1.default {
             if (this.healthTimerInterval) {
                 clearInterval(this.healthTimerInterval);
             }
-            yield this.client.multi()
-                .expire(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health`, KEY_EXPIRATION_TTL)
-                .expire(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health:log`, ONE_WEEK_IN_SECONDS)
-                .exec();
-            yield this.client.del(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:presence`);
+            yield this.client.MULTI()
+                .EXPIRE(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health`, KEY_EXPIRATION_TTL)
+                .EXPIRE(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health:log`, ONE_WEEK_IN_SECONDS)
+                .EXEC();
+            yield this.client.DEL(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:presence`);
             yield Promise.all([
                 yield this.mcMessageChannelClient.quit(),
                 yield this.mcDirectMessageChannelClient.quit(),
                 // this.publishChannel.quit(),
-                yield this.client.quit()
+                yield this.client.QUIT()
             ]);
         });
     }
