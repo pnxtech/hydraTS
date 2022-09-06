@@ -29,6 +29,7 @@ const KEY_EXPIRATION_TTL = 3; // three seconds
 // const KEYS_PER_SCAN = '100';
 /**
  * Hydra class
+ * @note: Uses https://redis.js.org/ for Redis communication
  */
 class Hydra extends events_1.default {
     /**
