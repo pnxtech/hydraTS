@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint . --fix --ext .ts",
     "release": "tsc; versiony --patch",
-    "cid": "git rev-parse HEAD | cut -c 1-10"
+    "cid": "git rev-parse HEAD"
   },
   "repository": {
     "type": "git",
