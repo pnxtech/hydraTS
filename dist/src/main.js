@@ -87,13 +87,13 @@ class Hydra extends events_1.default {
                 hostName: this.net.hostname
             });
             if (entry && !this.client.closing) {
-                yield this.client.MULTI()
-                    .SET(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:presence`, this.instanceID, {
+                yield this.client.multi()
+                    .set(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:presence`, this.instanceID, {
                     EX: KEY_EXPIRATION_TTL,
                     NX: true
                 })
-                    .HSET(`${this.redisPreKey}:nodes`, this.instanceID, entry)
-                    .EXEC();
+                    .hSet(`${this.redisPreKey}:nodes`, this.instanceID, entry)
+                    .exec();
             }
         });
     }
@@ -106,13 +106,13 @@ class Hydra extends events_1.default {
             const entry = Object.assign({
                 updatedOn: this.timestamp
             }, this.getHealth());
-            yield this.client.MULTI()
-                .SET(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health`, JSON.stringify(entry), {
+            yield this.client.multi()
+                .set(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health`, JSON.stringify(entry), {
                 EX: KEY_EXPIRATION_TTL,
                 NX: true
             })
-                .EXPIRE(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health:log`, ONE_WEEK_IN_SECONDS)
-                .EXEC();
+                .expire(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health:log`, ONE_WEEK_IN_SECONDS)
+                .exec();
         });
     }
     /**
@@ -167,7 +167,7 @@ class Hydra extends events_1.default {
                 type: this.config.serviceType,
                 registeredOn: this.timestamp
             });
-            yield this.client.SET(`${this.redisPreKey}:${this.config.serviceName}:service`, serviceEntry);
+            yield this.client.set(`${this.redisPreKey}:${this.config.serviceName}:service`, serviceEntry);
             // Setup service message channels
             this.mcMessageChannelClient = this.cloneRedisClient();
             this.mcMessageChannelClient.connect();
@@ -207,7 +207,7 @@ class Hydra extends events_1.default {
      */
     getQueuedMessage(serviceName) {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield this.client.RPOPLPUSH(`${this.redisPreKey}:${serviceName}:mqrecieved`, `${this.redisPreKey}:${serviceName}:mqinprogress`);
+            return yield this.client.rPopLPush(`${this.redisPreKey}:${serviceName}:mqrecieved`, `${this.redisPreKey}:${serviceName}:mqinprogress`);
         });
     }
     /**
@@ -224,7 +224,7 @@ class Hydra extends events_1.default {
                 throw new Error(parsedRoute.error);
             }
             const serviceName = parsedRoute.serviceName;
-            yield this.client.LPUSH(`${this.redisPreKey}:${serviceName}:mqrecieved`, JSON.stringify(msg));
+            yield this.client.lPush(`${this.redisPreKey}:${serviceName}:mqrecieved`, JSON.stringify(msg));
             return message;
         });
     }
@@ -239,7 +239,7 @@ class Hydra extends events_1.default {
     markQueueMessage(message, completed, reason) {
         return __awaiter(this, void 0, void 0, function* () {
             let strMessage = JSON.stringify(message);
-            yield this.client.LREM(`${this.redisPreKey}:${this.serviceName}:mqinprogress`, -1, strMessage);
+            yield this.client.lRem(`${this.redisPreKey}:${this.serviceName}:mqinprogress`, -1, strMessage);
             if (message.bdy) {
                 message.bdy.reason = reason || 'reason not provided';
             }
@@ -250,7 +250,7 @@ class Hydra extends events_1.default {
                 return message;
             }
             strMessage = JSON.stringify(message);
-            return yield this.client.RPUSH(`${this.redisPreKey}:${this.serviceName}:mqincomplete`, strMessage);
+            return yield this.client.rPush(`${this.redisPreKey}:${this.serviceName}:mqincomplete`, strMessage);
         });
     }
     /**
@@ -265,16 +265,16 @@ class Hydra extends events_1.default {
             if (this.healthTimerInterval) {
                 clearInterval(this.healthTimerInterval);
             }
-            yield this.client.MULTI()
-                .EXPIRE(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health`, KEY_EXPIRATION_TTL)
-                .EXPIRE(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health:log`, ONE_WEEK_IN_SECONDS)
-                .EXEC();
-            yield this.client.DEL(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:presence`);
+            yield this.client.multi()
+                .expire(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health`, KEY_EXPIRATION_TTL)
+                .expire(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health:log`, ONE_WEEK_IN_SECONDS)
+                .exec();
+            yield this.client.del(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:presence`);
             yield Promise.all([
                 yield this.mcMessageChannelClient.quit(),
                 yield this.mcDirectMessageChannelClient.quit(),
                 // this.publishChannel.quit(),
-                yield this.client.QUIT()
+                yield this.client.quit()
             ]);
         });
     }

@@ -82,13 +82,13 @@ export class Hydra extends EventEmitter {
       hostName: this.net.hostname
     });
     if (entry && !this.client.closing) {
-      await this.client.MULTI()
-        .SET(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:presence`, this.instanceID, {
+      await this.client.multi()
+        .set(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:presence`, this.instanceID, {
           EX: KEY_EXPIRATION_TTL,
           NX: true
         })
-        .HSET(`${this.redisPreKey}:nodes`, this.instanceID, entry)
-        .EXEC();
+        .hSet(`${this.redisPreKey}:nodes`, this.instanceID, entry)
+        .exec();
     }
   }
 
@@ -100,13 +100,13 @@ export class Hydra extends EventEmitter {
     const entry = Object.assign({
       updatedOn: this.timestamp
     }, this.getHealth());
-    await this.client.MULTI()
-      .SET(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health`, JSON.stringify(entry), {
+    await this.client.multi()
+      .set(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health`, JSON.stringify(entry), {
         EX: KEY_EXPIRATION_TTL,
         NX: true
       })
-      .EXPIRE(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health:log`, ONE_WEEK_IN_SECONDS)
-      .EXEC();
+      .expire(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health:log`, ONE_WEEK_IN_SECONDS)
+      .exec();
   }
 
   /**
@@ -167,7 +167,7 @@ export class Hydra extends EventEmitter {
       registeredOn: this.timestamp
     });
 
-    await this.client.SET(`${this.redisPreKey}:${this.config.serviceName}:service`, serviceEntry);
+    await this.client.set(`${this.redisPreKey}:${this.config.serviceName}:service`, serviceEntry);
 
     // Setup service message channels
     this.mcMessageChannelClient = this.cloneRedisClient();
@@ -210,7 +210,7 @@ export class Hydra extends EventEmitter {
    * @return {promise} promise - resolving to the message that was dequeued or a rejection.
    */
   async getQueuedMessage(serviceName) {
-    return await this.client.RPOPLPUSH(`${this.redisPreKey}:${serviceName}:mqrecieved`, `${this.redisPreKey}:${serviceName}:mqinprogress`);
+    return await this.client.rPopLPush(`${this.redisPreKey}:${serviceName}:mqrecieved`, `${this.redisPreKey}:${serviceName}:mqinprogress`);
   }
 
   /**
@@ -226,7 +226,7 @@ export class Hydra extends EventEmitter {
       throw new Error(parsedRoute.error);
     }
     const serviceName = parsedRoute.serviceName;
-    await this.client.LPUSH(`${this.redisPreKey}:${serviceName}:mqrecieved`, JSON.stringify(msg));
+    await this.client.lPush(`${this.redisPreKey}:${serviceName}:mqrecieved`, JSON.stringify(msg));
     return message;
   }
 
@@ -240,7 +240,7 @@ export class Hydra extends EventEmitter {
    */
   async markQueueMessage(message, completed, reason) {
     let strMessage = JSON.stringify(message);
-    await this.client.LREM(`${this.redisPreKey}:${this.serviceName}:mqinprogress`, -1, strMessage);
+    await this.client.lRem(`${this.redisPreKey}:${this.serviceName}:mqinprogress`, -1, strMessage);
     if (message.bdy) {
       message.bdy.reason = reason || 'reason not provided';
     } else if (message.body) {
@@ -250,7 +250,7 @@ export class Hydra extends EventEmitter {
       return message;
     }
     strMessage = JSON.stringify(message);
-    return await this.client.RPUSH(`${this.redisPreKey}:${this.serviceName}:mqincomplete`, strMessage);
+    return await this.client.rPush(`${this.redisPreKey}:${this.serviceName}:mqincomplete`, strMessage);
   }
 
   /**
@@ -264,17 +264,17 @@ export class Hydra extends EventEmitter {
     if (this.healthTimerInterval) {
       clearInterval(this.healthTimerInterval);
     }
-    await this.client.MULTI()
-      .EXPIRE(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health`, KEY_EXPIRATION_TTL)
-      .EXPIRE(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health:log`, ONE_WEEK_IN_SECONDS)
-      .EXEC();
-    await this.client.DEL(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:presence`);
+    await this.client.multi()
+      .expire(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health`, KEY_EXPIRATION_TTL)
+      .expire(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:health:log`, ONE_WEEK_IN_SECONDS)
+      .exec();
+    await this.client.del(`${this.redisPreKey}:${this.serviceName}:${this.instanceID}:presence`);
 
     await Promise.all([
       await this.mcMessageChannelClient.quit(),
       await this.mcDirectMessageChannelClient.quit(),
       // this.publishChannel.quit(),
-      await this.client.QUIT()
+      await this.client.quit()
     ]);
   }
 
