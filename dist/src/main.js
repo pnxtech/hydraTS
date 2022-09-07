@@ -146,6 +146,16 @@ class Hydra extends events_1.default {
         };
     }
     /**
+     * @name createMessage
+     * @param msg
+     * @returns object
+     */
+    createMessage(msg) {
+        const umfMsg = new umfmessage_1.UMFMessage();
+        umfMsg.createMessage(msg);
+        return umfMsg.toShort();
+    }
+    /**
      * @name registerService
      * @summary Register a service with Hydra
      * @returns
@@ -165,9 +175,7 @@ class Hydra extends events_1.default {
             this.mcMessageChannelClient.on('message', (_channel, message) => {
                 const msg = JSON.parse(message);
                 if (msg) {
-                    const umfMsg = new umfmessage_1.UMFMessage();
-                    umfMsg.createMessage(msg);
-                    this.emit('message', umfMsg.toShort());
+                    this.emit('message', this.createMessage(msg));
                 }
             });
             this.mcDirectMessageChannelClient = this.cloneRedisClient();
@@ -176,9 +184,7 @@ class Hydra extends events_1.default {
             this.mcDirectMessageChannelClient.on('message', (_channel, message) => {
                 const msg = JSON.parse(message);
                 if (msg) {
-                    const umfMsg = new umfmessage_1.UMFMessage();
-                    umfMsg.createMessage(msg);
-                    this.emit('message', umfMsg.toShort());
+                    this.emit('message', this.createMessage(msg));
                 }
             });
             // Schedule periodic updates
@@ -212,12 +218,7 @@ class Hydra extends events_1.default {
      */
     queueMessage(message) {
         return __awaiter(this, void 0, void 0, function* () {
-            const umfMsg = new umfmessage_1.UMFMessage();
-            umfMsg.createMessage(message);
-            if (!umfMsg.validate()) {
-                throw new Error('UMF message is invalid');
-            }
-            const msg = umfMsg.toShort();
+            const msg = this.createMessage(message);
             const parsedRoute = (0, umfmessage_1.parseRoute)(msg.to);
             if (parsedRoute.error) {
                 throw new Error(parsedRoute.error);

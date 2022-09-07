@@ -145,6 +145,17 @@ export class Hydra extends EventEmitter {
   }
 
   /**
+   * @name createMessage
+   * @param msg 
+   * @returns object
+   */
+  createMessage(msg) {
+    const umfMsg = new UMFMessage();
+    umfMsg.createMessage(msg);
+    return umfMsg.toShort();
+  }
+
+  /**
    * @name registerService
    * @summary Register a service with Hydra
    * @returns 
@@ -165,9 +176,7 @@ export class Hydra extends EventEmitter {
     this.mcMessageChannelClient.on('message', (_channel, message) => {
       const msg = JSON.parse(message);
       if (msg) {
-        const umfMsg = new UMFMessage();
-        umfMsg.createMessage(msg);
-        this.emit('message', umfMsg.toShort());
+        this.emit('message', this.createMessage(msg));
       }
     });
 
@@ -177,9 +186,7 @@ export class Hydra extends EventEmitter {
     this.mcDirectMessageChannelClient.on('message', (_channel, message) => {
       const msg = JSON.parse(message);
       if (msg) {
-        const umfMsg = new UMFMessage();
-        umfMsg.createMessage(msg);
-        this.emit('message', umfMsg.toShort());
+        this.emit('message', this.createMessage(msg));
       }
     });
 
@@ -213,18 +220,11 @@ export class Hydra extends EventEmitter {
    * @return {promise} promise - resolving to the message that was queued or a rejection.
    */
   async queueMessage(message) {
-    const umfMsg = new UMFMessage();
-    umfMsg.createMessage(message);
-    if (!umfMsg.validate()) {
-      throw new Error('UMF message is invalid');
-    }
-
-    const msg = umfMsg.toShort();
+    const msg = this.createMessage(message);
     const parsedRoute = parseRoute(msg.to);
     if (parsedRoute.error) {
       throw new Error(parsedRoute.error);
     }
-
     const serviceName = parsedRoute.serviceName;
     await this.client.LPUSH(`${this.redisPreKey}:${serviceName}:mqrecieved`, JSON.stringify(msg));
     return message;
