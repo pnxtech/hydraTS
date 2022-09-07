@@ -1,6 +1,6 @@
 {
   "name": "hydrats",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "HydraTS is a TypeScript library for building Hydra-powered Microservices and other distributed computing software.",
   "main": "./dist/src/main.js",
   "scripts": {

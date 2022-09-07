@@ -38,7 +38,7 @@ class Hydra extends events_1.default {
     constructor() {
         super();
         this.redisPreKey = 'hydra:service';
-        this.mcMessageKey = 'hydra:service:mc';
+        this.mcMessageKey = 'hydra:service:mc'; // mc = message courier - named for historical reasons.
         this.net = new network_1.Network();
         this.mcMessageChannelClient = null;
         this.mcDirectMessageChannelClient = null;
@@ -163,16 +163,15 @@ class Hydra extends events_1.default {
     registerService() {
         return __awaiter(this, void 0, void 0, function* () {
             const serviceEntry = JSON.stringify({
-                serviceName: this.config.serviceName,
+                serviceName: this.serviceName,
                 type: this.config.serviceType,
                 registeredOn: this.timestamp
             });
-            yield this.client.set(`${this.redisPreKey}:${this.config.serviceName}:service`, serviceEntry);
+            yield this.client.set(`${this.redisPreKey}:${this.serviceName}:service`, serviceEntry);
             // Setup service message channels
             this.mcMessageChannelClient = this.cloneRedisClient();
             this.mcMessageChannelClient.connect();
-            this.mcMessageChannelClient.subscribe(`${this.mcMessageKey}:${this.config.serviceName}`);
-            this.mcMessageChannelClient.on('message', (_channel, message) => {
+            this.mcMessageChannelClient.subscribe(`${this.mcMessageKey}:${this.serviceName}`, (message) => {
                 const msg = JSON.parse(message);
                 if (msg) {
                     this.emit('message', this.createMessage(msg));
@@ -180,8 +179,7 @@ class Hydra extends events_1.default {
             });
             this.mcDirectMessageChannelClient = this.cloneRedisClient();
             this.mcDirectMessageChannelClient.connect();
-            this.mcDirectMessageChannelClient.subscribe(`${this.mcMessageKey}:${this.config.serviceName}:${this.instanceID}`);
-            this.mcDirectMessageChannelClient.on('message', (_channel, message) => {
+            this.mcDirectMessageChannelClient.subscribe(`${this.mcMessageKey}:${this.serviceName}:${this.instanceID}`, (message) => {
                 const msg = JSON.parse(message);
                 if (msg) {
                     this.emit('message', this.createMessage(msg));

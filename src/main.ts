@@ -24,7 +24,7 @@ export class Hydra extends EventEmitter {
   private config: IHydraConfig;
   private instanceID: string;
   private redisPreKey = 'hydra:service';
-  private mcMessageKey = 'hydra:service:mc';
+  private mcMessageKey = 'hydra:service:mc'; // mc = message courier - named for historical reasons.
   private net = new Network();
 
   private mcMessageChannelClient = null;
@@ -162,18 +162,17 @@ export class Hydra extends EventEmitter {
    */
   async registerService() {
     const serviceEntry = JSON.stringify({
-      serviceName: this.config.serviceName,
+      serviceName: this.serviceName,
       type: this.config.serviceType,
       registeredOn: this.timestamp
     });
 
-    await this.client.set(`${this.redisPreKey}:${this.config.serviceName}:service`, serviceEntry);
+    await this.client.set(`${this.redisPreKey}:${this.serviceName}:service`, serviceEntry);
 
     // Setup service message channels
     this.mcMessageChannelClient = this.cloneRedisClient();
     this.mcMessageChannelClient.connect();
-    this.mcMessageChannelClient.subscribe(`${this.mcMessageKey}:${this.config.serviceName}`);
-    this.mcMessageChannelClient.on('message', (_channel, message) => {
+    this.mcMessageChannelClient.subscribe(`${this.mcMessageKey}:${this.serviceName}`, (message) => {
       const msg = JSON.parse(message);
       if (msg) {
         this.emit('message', this.createMessage(msg));
@@ -182,8 +181,7 @@ export class Hydra extends EventEmitter {
 
     this.mcDirectMessageChannelClient = this.cloneRedisClient();
     this.mcDirectMessageChannelClient.connect();
-    this.mcDirectMessageChannelClient.subscribe(`${this.mcMessageKey}:${this.config.serviceName}:${this.instanceID}`);
-    this.mcDirectMessageChannelClient.on('message', (_channel, message) => {
+    this.mcDirectMessageChannelClient.subscribe(`${this.mcMessageKey}:${this.serviceName}:${this.instanceID}`, (message) => {
       const msg = JSON.parse(message);
       if (msg) {
         this.emit('message', this.createMessage(msg));
