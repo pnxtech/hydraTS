@@ -200,14 +200,15 @@ class Hydra extends events_1.default {
         });
     }
     /**
-     * @name _getQueuedMessage
+     * @name getQueuedMessage
      * @summary retrieve a queued message
      * @param {string} serviceName who's queue might provide a message
      * @return {promise} promise - resolving to the message that was dequeued or a rejection.
      */
     getQueuedMessage(serviceName) {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield this.client.rPopLPush(`${this.redisPreKey}:${serviceName}:mqrecieved`, `${this.redisPreKey}:${serviceName}:mqinprogress`);
+            const data = yield this.client.rPopLPush(`${this.redisPreKey}:${serviceName}:mqrecieved`, `${this.redisPreKey}:${serviceName}:mqinprogress`);
+            return JSON.parse(data);
         });
     }
     /**

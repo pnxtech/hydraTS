@@ -204,13 +204,14 @@ export class Hydra extends EventEmitter {
   }
 
   /**
-   * @name _getQueuedMessage
+   * @name getQueuedMessage
    * @summary retrieve a queued message
    * @param {string} serviceName who's queue might provide a message
    * @return {promise} promise - resolving to the message that was dequeued or a rejection.
    */
   async getQueuedMessage(serviceName) {
-    return await this.client.rPopLPush(`${this.redisPreKey}:${serviceName}:mqrecieved`, `${this.redisPreKey}:${serviceName}:mqinprogress`);
+    const data = await this.client.rPopLPush(`${this.redisPreKey}:${serviceName}:mqrecieved`, `${this.redisPreKey}:${serviceName}:mqinprogress`);
+    return JSON.parse(data);
   }
 
   /**
